@@ -3,6 +3,8 @@ const {TouchBarButton, TouchBarLabel, TouchBarSpacer} = TouchBar
 
 const path = require('path')
 const isDev = require('electron-is-dev')
+const yaml = require('js-yaml')
+const fs = require('fs')
 
 let mainWindow
 
@@ -19,10 +21,9 @@ createWindow = () => {
     height: 860,
     width: 1280,
   })
-
   mainWindow.loadURL(
     isDev
-      ? 'http://localhost:3000'
+      ? `http://localhost:3000`
       : `file://${path.join(__dirname, '../build/index.html')}`,
   )
 
@@ -63,11 +64,25 @@ generateMenu = () => {
   const template = [
     {
       label: 'File',
+      submenu: [{role: 'about'}, {role: 'quit'}]
+    },
+    {
+      label: 'File',
       submenu: [{
-        label: 'Open', click: function () {
-          app.quit()  // This is standard function to quit app.
+        label: 'Open...', click: function () {
+          const {dialog} = require('electron')
+          dialog.showOpenDialog({
+            properties: ['openFile', 'openDirectory', 'multiSelections'],
+            filters: [
+              {name: 'Docker Compose', extensions: ['yml', 'yaml']},
+              {name: 'All Files', extensions: ['*']}
+            ]
+          }, (fileNames) => {
+            let content = yaml.safeLoad(fs.readFileSync(fileNames[0], 'utf8'))
+            mainWindow.webContents.send('file-opened', content)
+          })
         }
-      }, {role: 'about'}, {role: 'quit'}],
+      }]
     },
     {
       label: 'Edit',
@@ -128,6 +143,7 @@ generateMenu = () => {
 }
 
 app.on('ready', () => {
+  console.log('Application is ready')
   createWindow()
   generateMenu()
 })
